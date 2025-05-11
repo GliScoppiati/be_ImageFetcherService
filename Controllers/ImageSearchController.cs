@@ -25,7 +25,11 @@ namespace ImageFetcherService.Controllers
         public async Task<IActionResult> Search([FromQuery] string query)
         {
             if (string.IsNullOrWhiteSpace(query))
-                return BadRequest("Query is required");
+                return BadRequest(new
+                {
+                    message = "Query is required",
+                    timestamp = DateTime.UtcNow
+                });
 
             var imageResults = new List<ImageResultDto>();
             var tasks = new List<Task>();
