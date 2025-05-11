@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ImageFetcherService.Services;
 using ImageFetcherService.Models;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace ImageFetcherService.Controllers
 {
@@ -34,14 +38,13 @@ namespace ImageFetcherService.Controllers
             var imageResults = new List<ImageResultDto>();
             var tasks = new List<Task>();
             int fallbackCount = 0;
-            const int unsplashCount = 2;
 
-            // UNSPLASH (2 immagini)
+            // UNSPLASH (4 immagini)
             tasks.Add(Task.Run(async () =>
             {
                 try
                 {
-                    var unsplash = await _unsplashClient.SearchImagesAsync(query, unsplashCount);
+                    var unsplash = await _unsplashClient.SearchImagesAsync(query, 4);
                     imageResults.AddRange(unsplash);
                 }
                 catch (HttpRequestException ex) when (ex.Message.Contains("403"))
@@ -55,7 +58,7 @@ namespace ImageFetcherService.Controllers
                 }
             }));
 
-            // PEXELS (5 o 6 immagini)
+            // PEXELS (fallisce il caricamento, fallback)
             tasks.Add(Task.Run(async () =>
             {
                 try
@@ -66,15 +69,16 @@ namespace ImageFetcherService.Controllers
                 catch (Exception ex)
                 {
                     Console.WriteLine($"⚠️ Pexels error: {ex.Message}");
+                    fallbackCount += 10;
                 }
             }));
 
-            // PIXABAY (5 o 6 immagini)
+            // PIXABAY (11 immagini)
             tasks.Add(Task.Run(async () =>
             {
                 try
                 {
-                    var pixabay = await _pixabayClient.SearchImagesAsync(query, 5 + (fallbackCount + 1) / 2);
+                    var pixabay = await _pixabayClient.SearchImagesAsync(query, 11);
                     imageResults.AddRange(pixabay);
                 }
                 catch (Exception ex)
@@ -83,12 +87,16 @@ namespace ImageFetcherService.Controllers
                 }
             }));
 
+            // Attendere che tutte le richieste siano completate
             await Task.WhenAll(tasks);
 
             if (!imageResults.Any())
                 return NoContent();
 
-            return Ok(imageResults.OrderBy(r => r.Source).ToList());
+            // Randomizzare i risultati prima di restituirli
+            var randomizedResults = imageResults.OrderBy(x => Guid.NewGuid()).ToList();
+
+            return Ok(randomizedResults);
         }
     }
 }

@@ -26,6 +26,8 @@ namespace ImageFetcherService.Services
             Console.WriteLine($"🔐 Pexels API key loaded: {apiKey.Substring(0, 4)}********");
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; ImageFetcherBot/1.0)");
+
         }
 
         public async Task<List<ImageResultDto>> SearchImagesAsync(string query, int perPage = 5)
