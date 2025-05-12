@@ -21,8 +21,8 @@ namespace ImageFetcherService.Services
             ILogger<UnsplashClient> logger)
         {
             _httpClient = httpClient;
-            _logger     = logger;
-            _accessKey  = configuration["Unsplash:AccessKey"] 
+            _logger = logger;
+            _accessKey = configuration["Unsplash:AccessKey"]
                           ?? throw new InvalidOperationException("Unsplash API access key is missing from configuration.");
 
             _logger.LogDebug("[ImageFetcherService] 🔐 Unsplash access key loaded successfully.");
@@ -64,19 +64,19 @@ namespace ImageFetcherService.Services
                 throw new HttpRequestException($"Unsplash API error: {response.StatusCode}");
             }
 
-            var json     = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync();
             var document = JsonDocument.Parse(json);
-            var results  = new List<ImageResultDto>();
+            var results = new List<ImageResultDto>();
 
             foreach (var photo in document.RootElement.GetProperty("results").EnumerateArray())
             {
                 results.Add(new ImageResultDto
                 {
-                    Url             = photo.GetProperty("urls").GetProperty("regular").GetString() ?? "",
-                    Source          = "unsplash",
-                    Photographer    = photo.GetProperty("user").GetProperty("name").GetString() ?? "",
+                    Url = photo.GetProperty("urls").GetProperty("regular").GetString() ?? "",
+                    Source = "unsplash",
+                    Photographer = photo.GetProperty("user").GetProperty("name").GetString() ?? "",
                     PhotographerUrl = photo.GetProperty("user").GetProperty("links").GetProperty("html").GetString() ?? "",
-                    Description     = photo.GetProperty("alt_description").GetString() ?? ""
+                    Description = photo.GetProperty("alt_description").GetString() ?? ""
                 });
             }
 

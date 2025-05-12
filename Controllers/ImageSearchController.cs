@@ -25,10 +25,10 @@ namespace ImageFetcherService.Controllers
             UnsplashClient unsplashClient,
             ILogger<ImageSearchController> logger)
         {
-            _pexelsClient   = pexelsClient;
-            _pixabayClient  = pixabayClient;
+            _pexelsClient = pexelsClient;
+            _pixabayClient = pixabayClient;
             _unsplashClient = unsplashClient;
-            _logger         = logger;
+            _logger = logger;
         }
 
         [HttpGet("search")]
@@ -40,13 +40,13 @@ namespace ImageFetcherService.Controllers
                 _logger.LogWarning("[ImageFetcherService] ⚠️ Search called without query at {Timestamp}.", DateTime.UtcNow);
                 return BadRequest(new
                 {
-                    message   = "Query is required",
+                    message = "Query is required",
                     timestamp = DateTime.UtcNow
                 });
             }
 
             var imageResults = new List<ImageResultDto>();
-            var tasks        = new List<Task>();
+            var tasks = new List<Task>();
             int fallbackCount = 0;
 
             // UNSPLASH (4 immagini)

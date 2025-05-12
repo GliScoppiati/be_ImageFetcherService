@@ -21,8 +21,8 @@ namespace ImageFetcherService.Services
             ILogger<PixabayClient> logger)
         {
             _httpClient = httpClient;
-            _logger     = logger;
-            _apiKey      = configuration["Pixabay:ApiKey"] 
+            _logger = logger;
+            _apiKey = configuration["Pixabay:ApiKey"]
                           ?? throw new InvalidOperationException("Pixabay API key is missing from configuration.");
             _logger.LogDebug("[ImageFetcherService] 🔐 Pixabay API key loaded successfully.");
         }
@@ -58,19 +58,19 @@ namespace ImageFetcherService.Services
                 throw new HttpRequestException($"Pixabay API error: {response.StatusCode}");
             }
 
-            var json     = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync();
             var document = JsonDocument.Parse(json);
-            var results  = new List<ImageResultDto>();
+            var results = new List<ImageResultDto>();
 
             foreach (var hit in document.RootElement.GetProperty("hits").EnumerateArray())
             {
                 results.Add(new ImageResultDto
                 {
-                    Url             = hit.GetProperty("webformatURL").GetString() ?? "",
-                    Source          = "pixabay",
-                    Photographer    = hit.GetProperty("user").GetString() ?? "",
+                    Url = hit.GetProperty("webformatURL").GetString() ?? "",
+                    Source = "pixabay",
+                    Photographer = hit.GetProperty("user").GetString() ?? "",
                     PhotographerUrl = $"https://pixabay.com/users/{hit.GetProperty("user").GetString()?.ToLower()}/",
-                    Description     = hit.GetProperty("tags").GetString() ?? ""
+                    Description = hit.GetProperty("tags").GetString() ?? ""
                 });
             }
 

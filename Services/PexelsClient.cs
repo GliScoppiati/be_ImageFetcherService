@@ -21,7 +21,7 @@ namespace ImageFetcherService.Services
             ILogger<PexelsClient> logger)
         {
             _httpClient = httpClient;
-            _logger     = logger;
+            _logger = logger;
 
             var apiKey = configuration["Pexels:ApiKey"];
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -71,19 +71,19 @@ namespace ImageFetcherService.Services
                 throw new HttpRequestException($"Pexels API error: {response.StatusCode}");
             }
 
-            var json     = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync();
             var document = JsonDocument.Parse(json);
-            var results  = new List<ImageResultDto>();
+            var results = new List<ImageResultDto>();
 
             foreach (var photo in document.RootElement.GetProperty("photos").EnumerateArray())
             {
                 results.Add(new ImageResultDto
                 {
-                    Url             = photo.GetProperty("src").GetProperty("medium").GetString() ?? "",
-                    Source          = "pexels",
-                    Photographer    = photo.GetProperty("photographer").GetString() ?? "",
+                    Url = photo.GetProperty("src").GetProperty("medium").GetString() ?? "",
+                    Source = "pexels",
+                    Photographer = photo.GetProperty("photographer").GetString() ?? "",
                     PhotographerUrl = photo.GetProperty("photographer_url").GetString() ?? "",
-                    Description     = photo.GetProperty("alt").GetString() ?? ""
+                    Description = photo.GetProperty("alt").GetString() ?? ""
                 });
             }
 
