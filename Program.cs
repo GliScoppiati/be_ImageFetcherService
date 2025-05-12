@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Logging;
 using ImageFetcherService.Services;
 using System.Text;
 
@@ -8,22 +9,22 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 🔐 JWT settings
 var jwtSection = builder.Configuration.GetSection("Jwt");
-var keyBytes = Encoding.ASCII.GetBytes(jwtSection["Key"]!);
+var keyBytes   = Encoding.ASCII.GetBytes(jwtSection["Key"]!);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opt =>
     {
         opt.RequireHttpsMetadata = false;
-        opt.SaveToken = true;
+        opt.SaveToken            = true;
         opt.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSection["Issuer"],
-            ValidAudience = jwtSection["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
+            ValidIssuer              = jwtSection["Issuer"],
+            ValidAudience            = jwtSection["Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(keyBytes)
         };
     });
 
@@ -44,10 +45,10 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Bearer token",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Name        = "Authorization",
+        In          = ParameterLocation.Header,
+        Type        = SecuritySchemeType.ApiKey,
+        Scheme      = "Bearer"
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -57,7 +58,7 @@ builder.Services.AddSwaggerGen(c =>
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    Id   = "Bearer"
                 }
             },
             Array.Empty<string>()
@@ -78,6 +79,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Recupera il logger di Program
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
 // ✅ Pipeline HTTP
 if (app.Environment.IsDevelopment())
 {
@@ -91,5 +95,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-Console.WriteLine("📷 ImageFetcherService avviato su: " + builder.Configuration["ASPNETCORE_URLS"]);
+// 🟢 Log avvio del service
+var urls = builder.Configuration["ASPNETCORE_URLS"] ?? "non configurato";
+logger.LogInformation(
+    "[ImageFetcherService] 📷 Service avviato su: {Urls}",
+    urls
+);
+
 app.Run();

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using ImageFetcherService.Services;
 using ImageFetcherService.Models;
 using System;
@@ -16,12 +17,18 @@ namespace ImageFetcherService.Controllers
         private readonly PexelsClient _pexelsClient;
         private readonly PixabayClient _pixabayClient;
         private readonly UnsplashClient _unsplashClient;
+        private readonly ILogger<ImageSearchController> _logger;
 
-        public ImageSearchController(PexelsClient pexelsClient, PixabayClient pixabayClient, UnsplashClient unsplashClient)
+        public ImageSearchController(
+            PexelsClient pexelsClient,
+            PixabayClient pixabayClient,
+            UnsplashClient unsplashClient,
+            ILogger<ImageSearchController> logger)
         {
-            _pexelsClient = pexelsClient;
-            _pixabayClient = pixabayClient;
+            _pexelsClient   = pexelsClient;
+            _pixabayClient  = pixabayClient;
             _unsplashClient = unsplashClient;
+            _logger         = logger;
         }
 
         [HttpGet("search")]
@@ -29,14 +36,17 @@ namespace ImageFetcherService.Controllers
         public async Task<IActionResult> Search([FromQuery] string query)
         {
             if (string.IsNullOrWhiteSpace(query))
+            {
+                _logger.LogWarning("[ImageFetcherService] ⚠️ Search called without query at {Timestamp}.", DateTime.UtcNow);
                 return BadRequest(new
                 {
-                    message = "Query is required",
+                    message   = "Query is required",
                     timestamp = DateTime.UtcNow
                 });
+            }
 
             var imageResults = new List<ImageResultDto>();
-            var tasks = new List<Task>();
+            var tasks        = new List<Task>();
             int fallbackCount = 0;
 
             // UNSPLASH (4 immagini)
@@ -46,15 +56,30 @@ namespace ImageFetcherService.Controllers
                 {
                     var unsplash = await _unsplashClient.SearchImagesAsync(query, 4);
                     imageResults.AddRange(unsplash);
+                    _logger.LogInformation(
+                        "[ImageFetcherService] 🚀 Unsplash returned {Count} images for '{Query}'.",
+                        unsplash.Count,
+                        query
+                    );
                 }
                 catch (HttpRequestException ex) when (ex.Message.Contains("403"))
                 {
-                    Console.WriteLine("⚠️ Unsplash rate limit reached.");
                     fallbackCount = 2;
+                    _logger.LogWarning(
+                        ex,
+                        "[ImageFetcherService] ⚠️ Unsplash rate limit reached for '{Query}'. Using fallback count = {FallbackCount}.",
+                        query,
+                        fallbackCount
+                    );
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Unsplash error: {ex.Message}");
+                    _logger.LogError(
+                        ex,
+                        "[ImageFetcherService] ❌ Unexpected Unsplash error for '{Query}': {ErrorMessage}",
+                        query,
+                        ex.Message
+                    );
                 }
             }));
 
@@ -63,13 +88,26 @@ namespace ImageFetcherService.Controllers
             {
                 try
                 {
-                    var pexels = await _pexelsClient.SearchImagesAsync(query, 5 + fallbackCount / 2);
+                    var count = 5 + fallbackCount / 2;
+                    var pexels = await _pexelsClient.SearchImagesAsync(query, count);
                     imageResults.AddRange(pexels);
+                    _logger.LogInformation(
+                        "[ImageFetcherService] 🚀 Pexels returned {Count} images for '{Query}' (requested {Requested}).",
+                        pexels.Count,
+                        query,
+                        count
+                    );
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Pexels error: {ex.Message}");
                     fallbackCount += 10;
+                    _logger.LogWarning(
+                        ex,
+                        "[ImageFetcherService] ⚠️ Pexels error for '{Query}': {ErrorMessage}. Increasing fallbackCount to {FallbackCount}.",
+                        query,
+                        ex.Message,
+                        fallbackCount
+                    );
                 }
             }));
 
@@ -80,21 +118,40 @@ namespace ImageFetcherService.Controllers
                 {
                     var pixabay = await _pixabayClient.SearchImagesAsync(query, 11);
                     imageResults.AddRange(pixabay);
+                    _logger.LogInformation(
+                        "[ImageFetcherService] 🚀 Pixabay returned {Count} images for '{Query}'.",
+                        pixabay.Count,
+                        query
+                    );
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Pixabay error: {ex.Message}");
+                    _logger.LogError(
+                        ex,
+                        "[ImageFetcherService] ❌ Pixabay error for '{Query}': {ErrorMessage}",
+                        query,
+                        ex.Message
+                    );
                 }
             }));
 
-            // Attendere che tutte le richieste siano completate
             await Task.WhenAll(tasks);
 
             if (!imageResults.Any())
+            {
+                _logger.LogInformation(
+                    "[ImageFetcherService] 🔍 No images found for '{Query}', returning NoContent.",
+                    query
+                );
                 return NoContent();
+            }
 
-            // Randomizzare i risultati prima di restituirli
             var randomizedResults = imageResults.OrderBy(x => Guid.NewGuid()).ToList();
+            _logger.LogInformation(
+                "[ImageFetcherService] 🎲 Returning {Count} randomized images for '{Query}'.",
+                randomizedResults.Count,
+                query
+            );
 
             return Ok(randomizedResults);
         }
